@@ -3,36 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>umair.pk | YouTube Video Downloader</title>
+    <title>RANA MUHAMMAD UMAIR - Flappy Bird</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 50px; }
-        .box { background: #333; padding: 30px; border-radius: 15px; display: inline-block; }
-        input { padding: 10px; width: 300px; border-radius: 5px; border: none; }
-        button { padding: 10px 20px; background: #ff0000; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        #downloadArea { margin-top: 20px; }
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #70c5ce;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+            margin-bottom: 10px;
+        }
+
+        #game-container {
+            position: relative;
+            border: 5px solid #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        canvas {
+            background-color: #70c5ce;
+            display: block;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        #play-button {
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background-color: #f44336;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px #d32f2f;
+        }
+
+        #play-button:active {
+            box-shadow: 0 2px #d32f2f;
+            transform: translate(-50%, -48%);
+        }
+
+        #score-board {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>umair.pk</h1>
-        <p>Paste YouTube Link Below:</p>
-        <input type="text" id="videoUrl" placeholder="https://youtube.com/watch?v=...">
-        <button onclick="getDownloadLink()">Get Video</button>
-        <div id="downloadArea"></div>
+
+    <h1>RANA MUHAMMAD UMAIR</h1>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="320" height="480"></canvas>
+        <div id="score-board">Score: 0</div>
+        <div id="ui-overlay">
+            <button id="play-button" onclick="startGame()">PLAY</button>
+        </div>
     </div>
 
     <script>
-        function getDownloadLink() {
-            let url = document.getElementById('videoUrl').value;
-            let area = document.getElementById('downloadArea');
-            if(url) {
-                area.innerHTML = "<p>Processing... Please wait.</p>";
-                // Hum ek third-party iframe use kar rahe hain jo download link generate karega
-                area.innerHTML = `<iframe src="https://loader.to/api/button/?url=${url}&f=720" width="100%" height="100px" scrolling="no" style="border:none;"></iframe>`;
-            } else {
-                alert("Please paste a link!");
-            }
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const playBtn = document.getElementById('play-button');
+        const uiOverlay = document.getElementById('ui-overlay');
+        const scoreDisplay = document.getElementById('score-board');
+
+        // Game Constants & Variables
+        let bird = { x: 50, y: 150, width: 30, height: 24, gravity: 0.6, velocity: 0, jump: -8 };
+        let pipes = [];
+        let frame = 0;
+        let score = 0;
+        let gameRunning = false;
+        const pipeWidth = 50;
+        const pipeGap = 120;
+
+        function startGame() {
+            // Reset game variables
+            bird.y = 150;
+            bird.velocity = 0;
+            pipes = [];
+            score = 0;
+            frame = 0;
+            gameRunning = true;
+            uiOverlay.style.display = 'none';
+            scoreDisplay.innerText = "Score: 0";
+            requestAnimationFrame(gameLoop);
         }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            update();
+            draw();
+
+            frame++;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            // Bird Movement
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            // Collision with Ground or Ceiling
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                gameOver();
+            }
+
+            // Pipe Spawning
+            if (frame % 90 === 0) {
+                let minPipeHeight = 50;
+                let maxPipeHeight = canvas.height - pipeGap - minPipeHeight;
+                let height = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1)) + minPipeHeight;
+                pipes.push({ x: canvas.width, top: height, passed: false });
+            }
+
+            // Pipe Movement and Collision
+            pipes.forEach((pipe, index) => {
+                pipe.x -= 2;
+
+                // Collision Detection
+                if (
+                    bird.x < pipe.x + pipeWidth &&
+                    bird.x + bird.width > pipe.x &&
+                    (bird.y < pipe.top || bird.y + bird.height > pipe.top + pipeGap)
+                ) {
+                    gameOver();
+                }
+
+                // Score Update
+                if (!pipe.passed && bird.x > pipe.x + pipeWidth) {
+                    score++;
+                    pipe.passed = true;
+                    scoreDisplay.innerText = "Score: " + score;
+                }
+
+                // Remove off-screen pipes
+                if (pipe.x + pipeWidth < 0) {
+                    pipes.splice(index, 1);
+                }
+            });
+        }
+
+        function draw() {
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background (Sky)
+            ctx.fillStyle = "#70c5ce";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Pipes
+            ctx.fillStyle = "#2ecc71";
+            pipes.forEach(pipe => {
+                // Top Pipe
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+                // Bottom Pipe
+                ctx.fillRect(pipe.x, pipe.top + pipeGap, pipeWidth, canvas.height);
+            });
+
+            // Draw Bird (Yellow Box)
+            ctx.fillStyle = "#f1c40f";
+            ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+            // Eye
+            ctx.fillStyle = "black";
+            ctx.fillRect(bird.x + 20, bird.y + 5, 5, 5);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            uiOverlay.style.display = 'block';
+            playBtn.innerText = "RESTART";
+        }
+
+        // Controls
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameRunning) {
+                bird.velocity = bird.jump;
+            }
+        });
+
+        // Touch/Click to jump
+        canvas.addEventListener('mousedown', () => {
+            if (gameRunning) bird.velocity = bird.jump;
+        });
     </script>
 </body>
 </html>
