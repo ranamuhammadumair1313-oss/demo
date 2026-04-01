@@ -3,221 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RANA MUHAMMAD UMAIR - Full Screen Game</title>
+    <title>Angry Birds - Unlimited Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        /* Poori screen ko cover karne ke liye CSS */
-        body, html {
+        body {
             margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
             overflow: hidden;
-            background-color: #70c5ce;
-            font-family: 'Arial', sans-serif;
+            background: url('https://img.freepik.com/free-vector/nature-landscape-with-green-hills-blue-sky_107791-10515.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Courier New', Courier, monospace;
         }
-
-        /* Aapka naam Blue color mein */
-        h1 {
+        #ui {
             position: absolute;
             top: 20px;
-            width: 100%;
-            text-align: center;
-            color: #0000FF; /* Blue Color */
-            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.5);
-            z-index: 10;
-            margin: 0;
-            font-size: 3rem;
-        }
-
-        #gameCanvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        #ui-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 20;
-        }
-
-        #play-button {
-            padding: 20px 50px;
-            font-size: 25px;
-            font-weight: bold;
-            color: white;
-            background-color: #f44336;
-            border: none;
-            border-radius: 15px;
-            cursor: pointer;
-            box-shadow: 0 8px #d32f2f;
-        }
-
-        #play-button:active {
-            box-shadow: 0 4px #d32f2f;
-            transform: translateY(4px);
-        }
-
-        #score-board {
-            position: absolute;
-            top: 80px;
             left: 20px;
-            color: white;
-            font-size: 30px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px #000;
+            color: #fff;
+            text-shadow: 3px 3px 0px #000;
+            pointer-events: none;
             z-index: 10;
+        }
+        #score-board {
+            font-size: 40px;
+            color: #55ff55;
+        }
+        #brand {
+            font-size: 28px;
+            color: #ffffff;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 15px;
+            border: 3px solid #fff;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        #info { font-size: 14px; color: #eee; margin-top: 5px; }
+        button {
+            pointer-events: all;
+            padding: 10px 20px;
+            background: #4a4a4a;
+            color: white;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
 
-    <h1>RANA MUHAMMAD UMAIR</h1>
-
-    <div id="score-board">Score: 0</div>
-
-    <div id="ui-overlay">
-        <button id="play-button" onclick="startGame()">PLAY GAME</button>
+    <div id="ui">
+        <div id="score-board">SCORE: <span id="score-val">0</span></div>
+        <div id="brand">UMAIR STUDIO</div>
+        <div id="info">Unlimited Birds Enabled!</div>
+        <button onclick="location.reload()">RESTART GAME</button>
     </div>
 
-    <!-- Sound Effect Tag -->
-    <audio id="gameOverSound" src="https://www.myinstants.com/media/sounds/roblox-death-sound-effect.mp3"></audio>
-
-    <canvas id="gameCanvas"></canvas>
-
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const uiOverlay = document.getElementById('ui-overlay');
-        const scoreDisplay = document.getElementById('score-board');
-        
-        // Sound element ko select karna
-        const gameOverSound = document.getElementById('gameOverSound');
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        let bird, pipes, frame, score, gameRunning;
-        
-        const pipeWidth = 60;
-        const pipeGap = 200;
-
-        function init() {
-            bird = { 
-                x: 100, 
-                y: canvas.height / 2, 
-                width: 40, 
-                height: 30, 
-                gravity: 0.5, 
-                velocity: 0, 
-                jump: -9 
-            };
-            pipes = [];
-            frame = 0;
-            score = 0;
-            gameRunning = false;
+        // --- SCORE SYSTEM ---
+        let currentScore = 0;
+        function updateScore(points) {
+            currentScore += points;
+            document.getElementById('score-val').innerText = currentScore;
         }
 
-        function startGame() {
-            init();
-            gameRunning = true;
-            uiOverlay.style.display = 'none';
-            scoreDisplay.innerText = "Score: 0";
-            gameLoop();
-        }
+        // --- BACKGROUND MUSIC ---
+        const bgMusic = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.2;
+        window.addEventListener('mousedown', () => { bgMusic.play().catch(() => {}); }, { once: true });
 
-        function gameLoop() {
-            if (!gameRunning) return;
-            update();
-            draw();
-            frame++;
-            requestAnimationFrame(gameLoop);
-        }
+        const { Engine, Render, Runner, World, Bodies, Mouse, MouseConstraint, Constraint, Events } = Matter;
 
-        function update() {
-            bird.velocity += bird.gravity;
-            bird.y += bird.velocity;
+        const engine = Engine.create();
+        const world = engine.world;
 
-            if (bird.y + bird.height > canvas.height || bird.y < 0) {
-                gameOver();
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                wireframes: false,
+                background: 'transparent'
             }
+        });
 
-            if (frame % 100 === 0) {
-                let minPipeHeight = 100;
-                let maxPipeHeight = canvas.height - pipeGap - minPipeHeight;
-                let height = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1)) + minPipeHeight;
-                pipes.push({ x: canvas.width, top: height, passed: false });
-            }
+        Render.run(render);
+        const runner = Runner.create();
+        Runner.run(runner, engine);
 
-            pipes.forEach((pipe, index) => {
-                pipe.x -= 4;
+        // Ground
+        const ground = Bodies.rectangle(window.innerWidth/2, window.innerHeight - 30, window.innerWidth, 60, { 
+            isStatic: true, label: 'ground',
+            render: { fillStyle: '#3d993d' } 
+        });
+        World.add(world, ground);
 
-                if (
-                    bird.x < pipe.x + pipeWidth &&
-                    bird.x + bird.width > pipe.x &&
-                    (bird.y < pipe.top || bird.y + bird.height > pipe.top + pipeGap)
-                ) {
-                    gameOver();
+        // --- BIRD SPAWNING SYSTEM ---
+        let currentBird;
+        let sling;
+        const anchor = { x: 250, y: window.innerHeight - 250 };
+
+        function spawnBird() {
+            // Naya Bird banana (Minecraft style)
+            currentBird = Bodies.rectangle(anchor.x, anchor.y, 50, 50, {
+                density: 0.005, restitution: 0.1, label: 'bird',
+                render: { sprite: { texture: 'https://cdn-icons-png.flaticon.com/512/11516/11516104.png', xScale: 0.12, yScale: 0.12 } }
+            });
+
+            // Gulel (Sling) ko bird se connect karna
+            sling = Constraint.create({
+                pointA: anchor,
+                bodyB: currentBird,
+                stiffness: 0.08,
+                length: 0.1,
+                render: { strokeStyle: '#4b4b4b', lineWidth: 6 }
+            });
+
+            World.add(world, [currentBird, sling]);
+
+            // Memory Clean: Purana bird 10 second baad gayab ho jaye taaki game lag na ho
+            const birdToRemove = currentBird;
+            setTimeout(() => {
+                if (birdToRemove !== currentBird) { // Check if it's not the one currently in sling
+                    World.remove(world, birdToRemove);
                 }
+            }, 10000);
+        }
 
-                if (!pipe.passed && bird.x > pipe.x + pipeWidth) {
-                    score++;
-                    pipe.passed = true;
-                    scoreDisplay.innerText = "Score: " + score;
-                }
+        spawnBird();
 
-                if (pipe.x + pipeWidth < 0) {
-                    pipes.splice(index, 1);
+        // --- MINECRAFT STRUCTURE (3 PIGS STACKED) ---
+        function createBlock(x, y, isPig) {
+            return Bodies.rectangle(x, y, 65, 65, {
+                label: isPig ? 'pig' : 'block',
+                restitution: 0.1, friction: 0.5,
+                render: { 
+                    sprite: { 
+                        texture: isPig ? 'https://p16-common-sign.tiktokcdn.com/tos-alisg-avt-0068/97712c69667ccc93652a9b9881b30608~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=714a5b74&x-expires=1775192400&x-signature=QrogzCFYf74kHq2h13RI1K8hwI8%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=sg1' : 'https://p16-common-sign.tiktokcdn.com/tos-alisg-avt-0068/97712c69667ccc93652a9b9881b30608~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=714a5b74&x-expires=1775192400&x-signature=QrogzCFYf74kHq2h13RI1K8hwI8%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=sg1', 
+                        xScale: 0.13, yScale: 0.13 
+                    } 
                 }
             });
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#70c5ce";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const stackX = window.innerWidth - 350;
+        const baseY = window.innerHeight - 80;
 
-            ctx.fillStyle = "#2ecc71";
-            pipes.forEach(pipe => {
-                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
-                ctx.fillRect(pipe.x, pipe.top + pipeGap, pipeWidth, canvas.height);
+        World.add(world, [
+            createBlock(stackX, baseY, false),
+            createBlock(stackX, baseY - 70, true),   // Pig 1
+            createBlock(stackX, baseY - 140, false),
+            createBlock(stackX, baseY - 210, true),  // Pig 2
+            createBlock(stackX, baseY - 280, false),
+            createBlock(stackX, baseY - 350, true)   // Pig 3
+        ]);
+
+        // Mouse Control
+        const mouse = Mouse.create(render.canvas);
+        const mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse, constraint: { stiffness: 0.2, render: { visible: false } }
+        });
+        World.add(world, mouseConstraint);
+
+        // --- RELAUNCH LOGIC (Unlimited Birds) ---
+        let isFired = false;
+
+        Events.on(mouseConstraint, 'enddrag', (e) => {
+            if (e.body === currentBird) {
+                isFired = true;
+            }
+        });
+
+        Events.on(engine, 'afterUpdate', () => {
+            // Agar bird kheencha aur chhoda gaya hai
+            if (isFired && currentBird.position.x > anchor.x + 20) {
+                // Sling se azad karo
+                World.remove(world, sling);
+                isFired = false;
+
+                // Naya bird turant (1 sec baad) spawn karo
+                setTimeout(() => {
+                    spawnBird();
+                }, 1000);
+            }
+        });
+
+        // --- SCORE LOGIC ---
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach(pair => {
+                const { bodyA, bodyB } = pair;
+                updateScore(5); // Basic hit points
+
+                if (bodyA.label === 'pig' || bodyB.label === 'pig') {
+                    const pig = bodyA.label === 'pig' ? bodyA : bodyB;
+                    if (pair.collision.speed > 3.5) {
+                        World.remove(world, pig);
+                        updateScore(1000); // Big bonus for pig
+                    }
+                }
             });
-
-            ctx.fillStyle = "#f1c40f";
-            ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
-            
-            ctx.fillStyle = "black";
-            ctx.fillRect(bird.x + bird.width - 10, bird.y + 5, 5, 5);
-        }
-
-        function gameOver() {
-            if (gameRunning) {
-                // Sound play karna jab player out ho
-                gameOverSound.play();
-            }
-            gameRunning = false;
-            uiOverlay.style.display = 'block';
-            document.getElementById('play-button').innerText = "RESTART";
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                if (gameRunning) bird.velocity = bird.jump;
-            }
         });
 
-        canvas.addEventListener('mousedown', () => {
-            if (gameRunning) bird.velocity = bird.jump;
+        window.addEventListener('resize', () => {
+            render.canvas.width = window.innerWidth;
+            render.canvas.height = window.innerHeight;
         });
 
-        init();
     </script>
 </body>
 </html>
