@@ -468,22 +468,59 @@ const ADMIN_PWD = '121845';
 const STORAGE_KEY = 'umair_ai_studio';
 const SETTINGS_KEY = 'umair_ai_settings';
 
+// ============================================================
+//  ✏️  APNI SETTINGS YAHAN PASTE KAREIN  ✏️
+//  Sirf yeh section edit karein — baaki sab mat chheyein
+// ============================================================
+const MY_CONFIG = {
+
+  // --- AI Provider ---
+  // Options: 'openai'  |  'gemini'  |  'claude'  |  'openrouter'  |  'custom'
+  provider: 'openai',
+
+  // --- API Key ---
+  // Apni API key yahan paste karein (quotes ke andar)
+  apiKey: '',
+
+  // --- AI Model ---
+  // OpenAI    : 'gpt-4o'  |  'gpt-4o-mini'  |  'gpt-4-turbo'  |  'gpt-3.5-turbo'
+  // Gemini    : 'gemini-1.5-pro'  |  'gemini-1.5-flash'  |  'gemini-pro'
+  // Claude    : 'claude-3-5-sonnet-20241022'  |  'claude-3-haiku-20240307'
+  // OpenRouter: 'openai/gpt-4o'  |  'anthropic/claude-3-haiku'  |  'google/gemini-pro'
+  model: 'gpt-4o-mini',
+
+  // --- Image Generation Model ---
+  // Options: 'dall-e-3'  |  'dall-e-2'
+  imgModel: 'dall-e-3',
+
+  // --- Custom Endpoint (sirf tab use ho jab provider = 'custom') ---
+  endpoint: '',
+
+  // --- Features Toggle ---
+  imgGenEnabled: true,       // true = Image generator on  |  false = off
+  voiceReplyEnabled: false,  // true = AI voice reply on   |  false = off
+
+};
+// ============================================================
+//  ✅  Bus! Baaki kuch mat badlein
+// ============================================================
+
 // ─── STATE ───────────────────────────────────────────────────
 let state = {
-  chats: {},        // {id: {title, messages:[]}}
+  chats: {},
   activeChatId: null,
-  pendingImages: [], // base64 data URLs queued for next send
+  pendingImages: [],
   isGenerating: false,
   isRecording: false,
   recognition: null,
   settings: {
-    provider: 'openai',
-    model: 'gpt-4o-mini',
-    apiKey: '',
-    endpoint: '',
-    imgModel: 'dall-e-3',
-    imgGenEnabled: true,
-    voiceReplyEnabled: false,
+    provider: MY_CONFIG.provider,
+    model: MY_CONFIG.model,
+    apiKey: MY_CONFIG.apiKey,
+    endpoint: MY_CONFIG.endpoint,
+    imgModel: MY_CONFIG.imgModel,
+    imgGenEnabled: MY_CONFIG.imgGenEnabled,
+    voiceReplyEnabled: MY_CONFIG.voiceReplyEnabled,
   }
 };
 
@@ -493,10 +530,16 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){const d=JSON.parse(atob(raw));state.chats=d.chats||{};state.activeChatId=d.activeChatId||null;}
   }catch(e){}
-  try{
-    const s=localStorage.getItem(SETTINGS_KEY);
-    if(s)state.settings={...state.settings,...JSON.parse(atob(s))};
-  }catch(e){}
+  // MY_CONFIG hamesha priority mein rahega — localStorage override nahi karega
+  state.settings = {
+    provider: MY_CONFIG.provider,
+    model: MY_CONFIG.model,
+    apiKey: MY_CONFIG.apiKey,
+    endpoint: MY_CONFIG.endpoint,
+    imgModel: MY_CONFIG.imgModel,
+    imgGenEnabled: MY_CONFIG.imgGenEnabled,
+    voiceReplyEnabled: MY_CONFIG.voiceReplyEnabled,
+  };
 }
 function saveState(){
   try{
