@@ -1353,26 +1353,36 @@ function buildApiMessages(imgForApi) {
 }
 
 async function callAPI(apiKey, model, messages) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  // OpenRouter uses OpenAI-compatible format
+  // System message goes inside messages array
+  const fullMessages = [
+    {role:'system', content:'You are Umair AI 2.0, an advanced AI assistant. You are helpful, knowledgeable, and precise. You support markdown formatting in your responses. When analyzing images, be thorough and detailed.'},
+    ...messages
+  ];
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method:'POST',
     headers:{
       'Content-Type':'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': window.location.href,
+      'X-Title': 'Umair AI 2.0'
     },
     body: JSON.stringify({
       model,
       max_tokens:4096,
-      system:'You are Umair AI 2.0, an advanced AI assistant. You are helpful, knowledgeable, and precise. You support markdown formatting in your responses. When analyzing images, be thorough and detailed.',
-      messages
+      messages: fullMessages
     })
   });
   if(!res.ok) {
     const err = await res.json().catch(()=>({}));
     throw new Error(err?.error?.message || `HTTP ${res.status}`);
   }
-  return res.json();
+  const data = await res.json();
+  // Convert OpenAI format to expected format
+  return {
+    content:[{ text: data.choices?.[0]?.message?.content || 'No response.' }]
+  };
 }
 
 // ── SETTINGS / PASSWORD ──
